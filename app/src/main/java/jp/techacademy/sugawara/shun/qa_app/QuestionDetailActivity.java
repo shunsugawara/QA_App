@@ -1,10 +1,15 @@
 package jp.techacademy.sugawara.shun.qa_app;
 
+import android.app.ProgressDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.provider.ContactsContract;
 import android.support.design.widget.FloatingActionButton;
+import android.support.design.widget.Snackbar;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.ListView;
 
@@ -17,13 +22,16 @@ import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
 import java.util.HashMap;
+import java.util.Map;
 
-public class QuestionDetailActivity extends AppCompatActivity {
+public class QuestionDetailActivity extends AppCompatActivity
+                implements View.OnClickListener,DatabaseReference.CompletionListener{
 
     private ListView mListView;
     private Question mQuestion;
     private QuestionDetailListAdapter mAdapter;
-
+    private ProgressDialog mProgress;
+    private FloatingActionButton mFavoriteFab;
     private DatabaseReference mAnswerRef;
 
     private ChildEventListener mEventListener = new ChildEventListener() {
@@ -78,34 +86,82 @@ public class QuestionDetailActivity extends AppCompatActivity {
         mQuestion = (Question) extras.get("question");
         setTitle(mQuestion.getTitle());
 
+        mProgress = new ProgressDialog(this);
+        mProgress.setMessage("登録");
+
         mListView = (ListView) findViewById(R.id.listView);
         mAdapter = new QuestionDetailListAdapter(this,mQuestion);
         mListView.setAdapter(mAdapter);
         mAdapter.notifyDataSetChanged();
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+        fab.setOnClickListener(this);
+//        fab.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//
+//                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+//
+//                if(user == null){
+//                    Intent intent = new Intent(getApplicationContext(),LoginActivity.class);
+//                    startActivity(intent);
+//                }else{
+//                    Intent intent = new Intent(getApplicationContext(), AnswerSendActivity.class);
+//                    intent.putExtra("question", mQuestion);
+//                    startActivity(intent);
+//                }
+//
+//            }
+//        });
 
-                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-
-                if(user == null){
-                    Intent intent = new Intent(getApplicationContext(),LoginActivity.class);
-                    startActivity(intent);
-                }else{
-                    Intent intent = new Intent(getApplicationContext(), AnswerSendActivity.class);
-                    intent.putExtra("question", mQuestion);
-                    startActivity(intent);
-                }
-
-            }
-        });
+        mFavoriteFab = (FloatingActionButton) findViewById(R.id.favoriteFab);
+        mFavoriteFab.setOnClickListener(this);
 
 
         DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
         mAnswerRef = databaseReference.child(Const.ContentsPATH).child(String.valueOf(mQuestion.getQuestionUid())).child(Const.AnswersPATH);
         mAnswerRef.addChildEventListener(mEventListener);
+
+    }
+
+    @Override
+    public void onComplete(DatabaseError databaseError,DatabaseReference databaseReference){
+        mProgress.dismiss();
+        if(databaseError == null){
+            mFavoriteFab.setImageResource(R.drawable.ic_yellowstar);
+        }else{
+            Log.d("Fabkakunin",String.valueOf(databaseError));
+        }
+
+    }
+
+    @Override
+    public void onClick(View v){
+        if(v.getId() == R.id.fab){
+            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+
+            if(user == null){
+                Intent intent = new Intent(getApplicationContext(),LoginActivity.class);
+                startActivity(intent);
+            }else {
+                Intent intent = new Intent(getApplicationContext(), AnswerSendActivity.class);
+                intent.putExtra("question", mQuestion);
+                startActivity(intent);
+            }
+
+        }else if(v.getId() ==  R.id.favoriteFab){
+
+            String name = FirebaseAuth.getInstance().getCurrentUser().getUid();
+
+            DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
+            DatabaseReference userRef = databaseReference.child(Const.ContentsPATH).child(String.valueOf(mQuestion.getGenre())).child(mQuestion.getQuestionUid()).child(Const.FavUserPATH);
+
+            HashMap<String,String> data = new HashMap<String,String>();
+            data.put("user",name);
+
+            userRef.push().setValue(data,this);
+            mProgress.show();
+        }
 
     }
 

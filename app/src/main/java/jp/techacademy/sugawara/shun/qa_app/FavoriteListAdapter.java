@@ -10,17 +10,14 @@ import android.widget.BaseAdapter;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import org.w3c.dom.Text;
-
 import java.util.ArrayList;
 
-public class QuestionsListAdapter extends BaseAdapter{
+public class FavoriteListAdapter extends BaseAdapter {
     private LayoutInflater mLayoutInflater = null;
     private ArrayList<Question> mQuestionArrayList;
 
-    public QuestionsListAdapter(Context context){
+    public FavoriteListAdapter(Context context){
         mLayoutInflater = (LayoutInflater)context.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-
     }
 
     @Override
@@ -45,7 +42,7 @@ public class QuestionsListAdapter extends BaseAdapter{
     public View getView(int position, View convertView, ViewGroup parent){
 
         if(convertView == null){
-            convertView = mLayoutInflater.inflate(R.layout.list_question,parent,false);
+            convertView = mLayoutInflater.inflate(R.layout.list_favorite,parent,false);
         }
 
         TextView titleText = (TextView) convertView.findViewById(R.id.titleTextView);
@@ -64,6 +61,19 @@ public class QuestionsListAdapter extends BaseAdapter{
             ImageView imageView = (ImageView) convertView.findViewById(R.id.imageView);
             imageView.setImageBitmap(image);
         }
+
+        //追加
+        TextView genreTextVIew = (TextView) convertView.findViewById(R.id.genreTextView);
+
+        String genreText;
+        switch(mQuestionArrayList.get(position).getGenre()){
+            case 1 : genreText = "趣味"; break;
+            case 2 : genreText = "生活"; break;
+            case 3 : genreText = "健康"; break;
+            case 4 : genreText = "コンピュータ"; break;
+            default:genreText = "不明"; break;
+        }
+        genreTextVIew.setText(genreText);
 
         return convertView;
     }

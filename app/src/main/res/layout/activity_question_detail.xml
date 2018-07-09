@@ -28,4 +28,14 @@
         android:src="@drawable/plus"
         />
 
+    <android.support.design.widget.FloatingActionButton
+        android:id="@+id/favoriteFab"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_toLeftOf="@+id/fab"
+        android:layout_marginRight="4dp"
+        android:layout_marginBottom="16dp"
+        android:src="@drawable/ic_graystar"/>
+
 </RelativeLayout>

@@ -11,6 +11,7 @@ import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Base64;
+import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -39,6 +40,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private ListView mListView;
     private ArrayList<Question> mQuestionArrayList;
     private QuestionsListAdapter mAdapter;
+    private FavoriteListAdapter mFavoriteAdapter;
 
     private ChildEventListener mEventListener = new ChildEventListener() {
         @Override
@@ -160,8 +162,13 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         mDatabaseReference = FirebaseDatabase.getInstance().getReference();
         mListView = (ListView)findViewById(R.id.listView);
         mAdapter = new QuestionsListAdapter(this);
+
+        //add
+        mFavoriteAdapter = new FavoriteListAdapter(this);
+        ////
         mQuestionArrayList = new ArrayList<Question>();
         mAdapter.notifyDataSetChanged();
+        mFavoriteAdapter.notifyDataSetChanged();
 
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener(){
             @Override
@@ -225,6 +232,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }else if (id == R.id.nav_computer){
             mToolbar.setTitle("コンピュータ");
             mGenre = 4;
+        }else if (id == R.id.nav_favorite){
+            mToolbar.setTitle("お気に入り");
+            favoriteListShow();
+            return true;
+
         }
 
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
@@ -241,7 +253,122 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         mGenreRef.addChildEventListener(mEventListener);
 
         return true;
+    }
 
+
+
+    //以下追加分
+    private void favoriteListShow(){
+        DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
+        drawer.closeDrawer(GravityCompat.START);
+
+        mQuestionArrayList.clear();
+        mFavoriteAdapter.setQuestionArrayList(mQuestionArrayList);
+
+        mListView.setAdapter(mFavoriteAdapter);
+
+        if(mGenreRef != null){
+            mGenreRef.removeEventListener(mEventListener);
+        }
+        for(int tempGenre =1; tempGenre < 5;tempGenre++ ) {
+            mGenre = tempGenre;
+            mGenreRef = mDatabaseReference.child(Const.ContentsPATH).child(String.valueOf(tempGenre));
+            mGenreRef.addChildEventListener(mFavoriteEventListener);
+        }
 
     }
+
+    private ChildEventListener mFavoriteEventListener = new ChildEventListener() {
+        @Override
+        public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+            HashMap map = (HashMap)dataSnapshot.getValue();
+            String title = (String)map.get("title");
+            String body = (String) map.get("body");
+            String name =(String)map.get("name");
+            String uid = (String)map.get("uid");
+            String imageString = (String) map.get("image");
+
+            byte[] bytes;
+            if(imageString != null){
+                bytes = Base64.decode(imageString,Base64.DEFAULT);
+            }else{
+                bytes = new byte[0];
+            }
+
+            ArrayList<Answer> answerArrayList = new ArrayList<Answer>();
+            HashMap answerMap = (HashMap) map.get("answers");
+            if(answerMap != null){
+                for(Object key :answerMap.keySet()){
+                    HashMap temp = (HashMap) answerMap.get((String)key);
+                    String answerBody = (String) temp.get("body");
+                    String answerName = (String) temp.get("name");
+                    String answerUid = (String) temp.get("uid");
+                    Answer answer = new Answer(answerBody,answerName,answerUid,(String) key);
+                    answerArrayList.add(answer);
+                }
+            }
+
+            HashMap favoriteMap = (HashMap) map.get("favorites");
+            if(favoriteMap != null){
+                for(Object key : favoriteMap.keySet()){
+                    HashMap temp = (HashMap) favoriteMap.get((String)key);
+                    String tempUser1 = String.valueOf(temp.get("user"));
+                    String tempUser = FirebaseAuth.getInstance().getCurrentUser().getUid();
+                    if(tempUser == tempUser1){
+                        Question question = new Question(title,body,name,uid,dataSnapshot.getKey(),mGenre,bytes,answerArrayList);
+                        mQuestionArrayList.add(question);
+                    }else{
+                        Log.d("wahwahwah",tempUser1);
+                        Log.d("wahwahwaha",tempUser);
+
+                    }
+                }
+            }
+
+            mFavoriteAdapter.notifyDataSetChanged();
+
+        }
+
+        @Override
+        public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+            HashMap map = (HashMap) dataSnapshot.getValue();
+
+            for(Question question : mQuestionArrayList){
+                if(dataSnapshot.getKey().equals(question.getQuestionUid())){
+                    question.getAnswers().clear();
+                    HashMap answerMap = (HashMap) map.get("answers");
+                    if(answerMap != null){
+                        for(Object key:answerMap.keySet()){
+                            HashMap temp = (HashMap) answerMap.get((String)key);
+                            String answerBody = (String)temp.get("body");
+                            String answerName = (String) temp.get("name");
+                            String answerUid = (String) temp.get("uid");
+                            Answer answer = new Answer(answerBody,answerName,answerUid,(String)key);
+                            question.getAnswers().add(answer);
+                        }
+                    }
+                    mFavoriteAdapter.notifyDataSetChanged();
+                }
+            }
+
+
+        }
+
+        @Override
+        public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+        }
+
+        @Override
+        public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+        }
+
+        @Override
+        public void onCancelled(DatabaseError databaseError) {
+
+        }
+    };
+
+
 }

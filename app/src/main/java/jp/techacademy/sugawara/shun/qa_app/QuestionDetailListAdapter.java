@@ -14,7 +14,6 @@ import android.widget.TextView;
 public class QuestionDetailListAdapter extends BaseAdapter {
     private final static int TYPE_QUESTION = 0;
     private final static int TYPE_ANSWER = 1;
-
     private LayoutInflater mLayoutInflater = null;
     private Question mQuestion;
 
