@@ -33,6 +33,7 @@ public class QuestionDetailActivity extends AppCompatActivity
     private ProgressDialog mProgress;
     private FloatingActionButton mFavoriteFab;
     private DatabaseReference mAnswerRef;
+    private int favoriteFlag =0;
 
     private ChildEventListener mEventListener = new ChildEventListener() {
         @Override
@@ -77,6 +78,50 @@ public class QuestionDetailActivity extends AppCompatActivity
         }
     };
 
+    private ChildEventListener mFavoriteEventListener = new ChildEventListener() {
+        @Override
+        public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+            HashMap map =(HashMap) dataSnapshot.getValue();
+            String answerUid = dataSnapshot.getKey();
+
+            for(Answer answer : mQuestion.getAnswers()){
+                if(answerUid.equals(answer.getAnswerUid())){
+                    return;
+                }
+            }
+
+            String body = (String)map.get("body");
+            String name = (String)map.get("name");
+            String uid = (String) map.get("uid");
+
+            Answer answer = new Answer(body,name,uid,answerUid);
+            mQuestion.getAnswers().add(answer);
+            mAdapter.notifyDataSetChanged();
+
+        }
+
+        @Override
+        public void onChildChanged(DataSnapshot dataSnapshot, String s) {
+
+        }
+
+        @Override
+        public void onChildRemoved(DataSnapshot dataSnapshot) {
+
+        }
+
+        @Override
+        public void onChildMoved(DataSnapshot dataSnapshot, String s) {
+
+        }
+
+        @Override
+        public void onCancelled(DatabaseError databaseError) {
+
+        }
+    };
+
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -87,7 +132,6 @@ public class QuestionDetailActivity extends AppCompatActivity
         setTitle(mQuestion.getTitle());
 
         mProgress = new ProgressDialog(this);
-        mProgress.setMessage("登録");
 
         mListView = (ListView) findViewById(R.id.listView);
         mAdapter = new QuestionDetailListAdapter(this,mQuestion);
@@ -96,27 +140,27 @@ public class QuestionDetailActivity extends AppCompatActivity
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(this);
-//        fab.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//
-//                FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-//
-//                if(user == null){
-//                    Intent intent = new Intent(getApplicationContext(),LoginActivity.class);
-//                    startActivity(intent);
-//                }else{
-//                    Intent intent = new Intent(getApplicationContext(), AnswerSendActivity.class);
-//                    intent.putExtra("question", mQuestion);
-//                    startActivity(intent);
-//                }
-//
-//            }
-//        });
 
         mFavoriteFab = (FloatingActionButton) findViewById(R.id.favoriteFab);
         mFavoriteFab.setOnClickListener(this);
 
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+//        if(user != null){
+//            String userId = user.getUid();
+//            for(String favoriteUser:mQuestion.()){
+//                if(userId.equals(favoriteUser)){
+//                    favoriteFlag = 1;
+//                }
+//            }
+//            if(favoriteFlag == 0){
+//                mFavoriteFab.setImageResource(R.drawable.ic_graystar);
+//            }else{
+//                mFavoriteFab.setImageResource(R.drawable.ic_yellowstar);
+////            }
+//
+//        }else{
+//            mFavoriteFab.hide();
+//        }
 
         DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
         mAnswerRef = databaseReference.child(Const.ContentsPATH).child(String.valueOf(mQuestion.getQuestionUid())).child(Const.AnswersPATH);
@@ -128,7 +172,13 @@ public class QuestionDetailActivity extends AppCompatActivity
     public void onComplete(DatabaseError databaseError,DatabaseReference databaseReference){
         mProgress.dismiss();
         if(databaseError == null){
-            mFavoriteFab.setImageResource(R.drawable.ic_yellowstar);
+            if(favoriteFlag == 0){
+                favoriteFlag = 1;
+                mFavoriteFab.setImageResource(R.drawable.ic_yellowstar);
+            }else{
+                favoriteFlag = 0;
+                mFavoriteFab.setImageResource(R.drawable.ic_graystar);
+            }
         }else{
             Log.d("Fabkakunin",String.valueOf(databaseError));
         }
@@ -137,8 +187,8 @@ public class QuestionDetailActivity extends AppCompatActivity
 
     @Override
     public void onClick(View v){
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
         if(v.getId() == R.id.fab){
-            FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
 
             if(user == null){
                 Intent intent = new Intent(getApplicationContext(),LoginActivity.class);
@@ -152,14 +202,22 @@ public class QuestionDetailActivity extends AppCompatActivity
         }else if(v.getId() ==  R.id.favoriteFab){
 
             String name = FirebaseAuth.getInstance().getCurrentUser().getUid();
-
             DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
-            DatabaseReference userRef = databaseReference.child(Const.ContentsPATH).child(String.valueOf(mQuestion.getGenre())).child(mQuestion.getQuestionUid()).child(Const.FavUserPATH);
+            DatabaseReference favRef = databaseReference.child(Const.UserPATH).child(user.getUid()).child(Const.FavUserPATH);
 
-            HashMap<String,String> data = new HashMap<String,String>();
-            data.put("user",name);
 
-            userRef.push().setValue(data,this);
+            if(favoriteFlag == 0){
+                HashMap<String,String> data = new HashMap<String,String>();
+                data.put("favQuestionId",mQuestion.getQuestionUid());
+                favRef.push().setValue(data,this);
+                mProgress.setMessage("登録しています");
+            }else{
+
+                favRef.push().removeValue(this);
+                mProgress.setMessage("削除しています");
+            }
+
+
             mProgress.show();
         }
 

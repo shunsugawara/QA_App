@@ -98,8 +98,6 @@ public class LoginActivity extends AppCompatActivity {
                         });
                     }
 
-
-
                     mProgress.dismiss();
                     finish();
                 }else {

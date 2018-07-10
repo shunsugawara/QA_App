@@ -1,6 +1,7 @@
 package jp.techacademy.sugawara.shun.qa_app;
 
 import java.io.Serializable;
+import java.io.StringBufferInputStream;
 import java.util.ArrayList;
 
 public class Question implements Serializable {
