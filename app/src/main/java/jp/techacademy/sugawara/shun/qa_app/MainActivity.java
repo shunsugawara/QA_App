@@ -289,6 +289,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         mGenreRef = mDatabaseReference.child(Const.ContentsPATH).child(String.valueOf(mGenre));
         mGenreRef.addChildEventListener(mEventListener);
 
+        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
+        mFavoriteRef = mDatabaseReference.child(Const.UserPATH).child(user.getUid()).child(Const.FavUserPATH);
+        mFavoriteRef.addChildEventListener(mFavoritesEventListener);
+
         return true;
     }
 
@@ -304,12 +308,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         mQuestionArrayList.clear();
         mFavoriteArrayList.clear();
         mFavoriteAdapter.setQuestionArrayList(mQuestionArrayList);
-
         mListView.setAdapter(mFavoriteAdapter);
 
-        if(mGenreRef != null){
-            mGenreRef.removeEventListener(mEventListener);
-        }
 //        for(int tempGenre =1; tempGenre < 5;tempGenre++ ) {
 //            mGenre = tempGenre;
 //            mGenreRef = mDatabaseReference.child(Const.UserPATH).child(user.getUid()).child(Const.FavUserPATH);
@@ -343,18 +343,10 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             mFavoriteListRef.addValueEventListener(new ValueEventListener() {
                 @Override
                 public void onDataChange(DataSnapshot dataSnapshot) {
-                    Query query = mFavoriteListRef.orderByKey().equalTo(mFavoriteArrayList.get(0));
-                    query.addValueEventListener(new ValueEventListener() {
-                        @Override
-                        public void onDataChange(DataSnapshot dataSnapshot) {
-                            DataSnapshot firstChild = dataSnapshot.getChildren().iterator().next();
-                            System.out.println("The dinosaur just shorter than the stegosaurus is: " + firstChild.getKey());
-                        }
-                        @Override
-                        public void onCancelled(DatabaseError databaseError) {
-                            // ...
-                        }
-                    });
+                    for(int i = 0;i < mFavoriteArrayList.size();i++){
+                        Query query = mFavoriteListRef.orderByKey().equalTo(mFavoriteArrayList.get(i));
+                        query.addChildEventListener(mEventListener);
+                    }
                 }
                 @Override
                 public void onCancelled(DatabaseError databaseError) {
