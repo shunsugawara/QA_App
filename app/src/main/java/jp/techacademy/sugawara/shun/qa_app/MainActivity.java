@@ -238,11 +238,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             Menu menu = mNavigationView.getMenu();
             MenuItem menuItem1 = menu.findItem(R.id.nav_favorite);
             menuItem1.setVisible(true);
+            mFavoriteArrayList.clear();
+            mFavoriteRef = mDatabaseReference.child(Const.UserPATH).child(user.getUid()).child(Const.FavUserPATH);
+            mFavoriteRef.addChildEventListener(mFavoritesEventListener);
         }
 
-        mFavoriteArrayList.clear();
-        mFavoriteRef = mDatabaseReference.child(Const.UserPATH).child(user.getUid()).child(Const.FavUserPATH);
-        mFavoriteRef.addChildEventListener(mFavoritesEventListener);
 
 
     }

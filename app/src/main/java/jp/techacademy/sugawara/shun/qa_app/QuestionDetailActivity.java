@@ -172,6 +172,16 @@ public class QuestionDetailActivity extends AppCompatActivity
     }
 
     @Override
+    public void onResume(){
+        super.onResume();
+        
+        DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
+        mAnswerRef = databaseReference.child(Const.ContentsPATH).child(String.valueOf(mQuestion.getQuestionUid())).child(Const.AnswersPATH);
+        mAnswerRef.addChildEventListener(mEventListener);
+
+    }
+
+    @Override
     public void onComplete(DatabaseError databaseError,DatabaseReference databaseReference){
         mProgress.dismiss();
 
