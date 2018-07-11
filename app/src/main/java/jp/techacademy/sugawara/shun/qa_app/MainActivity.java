@@ -11,7 +11,6 @@ import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.util.Base64;
-import android.util.Log;
 import android.view.View;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -25,13 +24,8 @@ import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
-import com.google.firebase.database.Query;
-import com.google.firebase.database.ValueEventListener;
 
-import java.lang.reflect.Array;
-import java.security.Key;
 import java.util.ArrayList;
-import java.util.EventListener;
 import java.util.HashMap;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
@@ -42,17 +36,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     private DatabaseReference mDatabaseReference;
     private DatabaseReference mGenreRef;
     private DatabaseReference mFavoriteRef;
-    private DatabaseReference mFavoriteListRef;
     private ListView mListView;
     private ArrayList<Question> mQuestionArrayList;
-    private ArrayList<String> mFavoriteArrayList;
+    private ArrayList<Favorite> mFavoriteArrayList;
     private QuestionsListAdapter mAdapter;
     private FavoriteListAdapter mFavoriteAdapter;
     private NavigationView mNavigationView;
+    private Favorite tempFavorite;
 
     private ChildEventListener mEventListener = new ChildEventListener() {
         @Override
         public void onChildAdded(DataSnapshot dataSnapshot, String s) {
+            String aaa = String.valueOf(dataSnapshot.getRef());
             HashMap map = (HashMap)dataSnapshot.getValue();
             String title = (String)map.get("title");
             String body = (String) map.get("body");
@@ -80,9 +75,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 }
             }
 
+            if(mFavoriteArrayList.size() > 0){
+                for(int i = 0;i< mFavoriteArrayList.size();i++){
+                    if(mFavoriteArrayList.get(i).getmQuestionUid().equals(dataSnapshot.getKey())){
+                        mGenre = Integer.parseInt(mFavoriteArrayList.get(i).getmGenre());
+                    }
+                }
+            }
+
             Question question = new Question(title,body,name,uid,dataSnapshot.getKey(),mGenre,bytes,answerArrayList);
+
             mQuestionArrayList.add(question);
+
             mAdapter.notifyDataSetChanged();
+            mFavoriteAdapter.notifyDataSetChanged();
 
         }
 
@@ -105,6 +111,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                         }
                     }
                     mAdapter.notifyDataSetChanged();
+                    mFavoriteAdapter.notifyDataSetChanged();
                 }
             }
         }
@@ -125,9 +132,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         public void onChildAdded(DataSnapshot dataSnapshot, String s) {
             HashMap map = (HashMap)dataSnapshot.getValue();
 
-                    if(map != null){
+            if(map != null){
                 String tempQId = (String) map.get("favQuestionId");
-                mFavoriteArrayList.add(tempQId);
+                String tempGenre = (String) map.get("genre");
+
+                Favorite favorite = new Favorite(tempGenre,tempQId,dataSnapshot.getKey());
+                mFavoriteArrayList.add(favorite);
             }
        }
 
@@ -193,7 +203,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         mFavoriteAdapter = new FavoriteListAdapter(this);
         ////
         mQuestionArrayList = new ArrayList<Question>();
-        mFavoriteArrayList = new ArrayList<String>();
+        mFavoriteArrayList = new ArrayList<Favorite>();
         mAdapter.notifyDataSetChanged();
         mFavoriteAdapter.notifyDataSetChanged();
 
@@ -202,6 +212,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             public void onItemClick(AdapterView<?> parent,View view, int position, long id){
                 Intent intent = new Intent(getApplicationContext(),QuestionDetailActivity.class);
                 intent.putExtra("question",mQuestionArrayList.get(position));
+                intent.putExtra("favorites",mFavoriteArrayList);
                 startActivity(intent);
             }
         });
@@ -228,6 +239,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             MenuItem menuItem1 = menu.findItem(R.id.nav_favorite);
             menuItem1.setVisible(true);
         }
+
+        mFavoriteArrayList.clear();
+        mFavoriteRef = mDatabaseReference.child(Const.UserPATH).child(user.getUid()).child(Const.FavUserPATH);
+        mFavoriteRef.addChildEventListener(mFavoritesEventListener);
+
+
     }
 
     @Override
@@ -289,16 +306,12 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         mGenreRef = mDatabaseReference.child(Const.ContentsPATH).child(String.valueOf(mGenre));
         mGenreRef.addChildEventListener(mEventListener);
 
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-        mFavoriteRef = mDatabaseReference.child(Const.UserPATH).child(user.getUid()).child(Const.FavUserPATH);
-        mFavoriteRef.addChildEventListener(mFavoritesEventListener);
 
         return true;
     }
 
 
 
-    //以下追加分
     private void favoriteListShow(){
         DrawerLayout drawer = (DrawerLayout) findViewById(R.id.drawer_layout);
         drawer.closeDrawer(GravityCompat.START);
@@ -306,148 +319,20 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
 
         mQuestionArrayList.clear();
-        mFavoriteArrayList.clear();
         mFavoriteAdapter.setQuestionArrayList(mQuestionArrayList);
         mListView.setAdapter(mFavoriteAdapter);
 
-//        for(int tempGenre =1; tempGenre < 5;tempGenre++ ) {
-//            mGenre = tempGenre;
-//            mGenreRef = mDatabaseReference.child(Const.UserPATH).child(user.getUid()).child(Const.FavUserPATH);
-//            mGenreRef.addValueEventListener(favoriteValueEventListener);
-//
-        mFavoriteRef = mDatabaseReference.child(Const.UserPATH).child(user.getUid()).child(Const.FavUserPATH);
-        mFavoriteRef.addChildEventListener(mFavoritesEventListener);
-//        mFavoriteRef.addChildEventListener(new ChildEventListener() {
-//            @Override
-//            public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-//                HashMap map = (HashMap)dataSnapshot.getValue();
-//
-//                if(map != null){
-//                        String tempQId = (String) map.get("favQuestionId");
-//                        mFavoriteArrayList.add(tempQId);
-//                }
-//            }
-//            @Override
-//            public void onChildChanged(DataSnapshot dataSnapshot, String s) { }
-//            @Override
-//            public void onChildRemoved(DataSnapshot dataSnapshot) { }
-//            @Override
-//            public void onChildMoved(DataSnapshot dataSnapshot, String s) { }
-//            @Override
-//            public void onCancelled(DatabaseError databaseError) { }
-//        });
+
 
 
         if(mFavoriteArrayList.size() > 0){
-            mFavoriteListRef = mDatabaseReference.child(Const.ContentsPATH);
-            mFavoriteListRef.addValueEventListener(new ValueEventListener() {
-                @Override
-                public void onDataChange(DataSnapshot dataSnapshot) {
-                    for(int i = 0;i < mFavoriteArrayList.size();i++){
-                        Query query = mFavoriteListRef.orderByKey().equalTo(mFavoriteArrayList.get(i));
-                        query.addChildEventListener(mEventListener);
-                    }
-                }
-                @Override
-                public void onCancelled(DatabaseError databaseError) {
-                }
-            });
+            for(int i = 0;i < mFavoriteArrayList.size();i++) {
+                tempFavorite = mFavoriteArrayList.get(i);
+                mGenre = Integer.parseInt(tempFavorite.getmGenre());
+                mDatabaseReference.child(Const.ContentsPATH).child(String.valueOf(mGenre)).orderByKey().equalTo(tempFavorite.getmQuestionUid()).addChildEventListener(mEventListener);
+
+            }
         }
     }
-
-//    private ChildEventListener mFavoriteEventListener = new ChildEventListener() {
-//        @Override
-//        public void onChildAdded(DataSnapshot dataSnapshot, String s) {
-//            HashMap map = (HashMap)dataSnapshot.getValue();
-//            String title = (String)map.get("title");
-//            String body = (String) map.get("body");
-//            String name =(String)map.get("name");
-//            String uid = (String)map.get("uid");
-//            String imageString = (String) map.get("image");
-//
-//            byte[] bytes;
-//            if(imageString != null){
-//                bytes = Base64.decode(imageString,Base64.DEFAULT);
-//            }else{
-//                bytes = new byte[0];
-//            }
-//
-//            ArrayList<Answer> answerArrayList = new ArrayList<Answer>();
-//            ArrayList<String> favoriteUserList = new ArrayList<String>();
-//            HashMap answerMap = (HashMap) map.get("answers");
-//            if(answerMap != null){
-//                for(Object key :answerMap.keySet()){
-//                    HashMap temp = (HashMap) answerMap.get((String)key);
-//                    String answerBody = (String) temp.get("body");
-//                    String answerName = (String) temp.get("name");
-//                    String answerUid = (String) temp.get("uid");
-//                    Answer answer = new Answer(answerBody,answerName,answerUid,(String) key);
-//                    answerArrayList.add(answer);
-//                }
-//            }
-//
-//            HashMap favoriteMap = (HashMap) map.get("favorites");
-//            if(favoriteMap != null){
-//                for(Object key : favoriteMap.keySet()){
-//                    HashMap temp = (HashMap) favoriteMap.get((String)key);
-//                    String tempUser1 = String.valueOf(temp.get("user"));
-//                    String tempUser = FirebaseAuth.getInstance().getCurrentUser().getUid();
-//                    if(tempUser.equals(tempUser1)){
-//                        Question question = new Question(title,body,name,uid,dataSnapshot.getKey(),mGenre,bytes,answerArrayList,favoriteUserList);
-//                        mQuestionArrayList.add(question);
-//                    }else{
-//                        Log.d("wahwahwah",tempUser1);
-//                        Log.d("wahwahwaha",tempUser);
-//
-//                    }
-//                }
-//            }
-//
-//            mFavoriteAdapter.notifyDataSetChanged();
-//
-//        }
-//
-//        @Override
-//        public void onChildChanged(DataSnapshot dataSnapshot, String s) {
-//            HashMap map = (HashMap) dataSnapshot.getValue();
-//
-//            for(Question question : mQuestionArrayList){
-//                if(dataSnapshot.getKey().equals(question.getQuestionUid())){
-//                    question.getAnswers().clear();
-//                    HashMap answerMap = (HashMap) map.get("answers");
-//                    if(answerMap != null){
-//                        for(Object key:answerMap.keySet()){
-//                            HashMap temp = (HashMap) answerMap.get((String)key);
-//                            String answerBody = (String)temp.get("body");
-//                            String answerName = (String) temp.get("name");
-//                            String answerUid = (String) temp.get("uid");
-//                            Answer answer = new Answer(answerBody,answerName,answerUid,(String)key);
-//                            question.getAnswers().add(answer);
-//                        }
-//                    }
-//                    mFavoriteAdapter.notifyDataSetChanged();
-//                }
-//            }
-//
-//        }
-//
-//        @Override
-//        public void onChildRemoved(DataSnapshot dataSnapshot) {
-//
-//        }
-//
-//        @Override
-//        public void onChildMoved(DataSnapshot dataSnapshot, String s) {
-//
-//        }
-//
-//        @Override
-//        public void onCancelled(DatabaseError databaseError) {
-//
-//        }
-//    };
-
-
-
 
 }

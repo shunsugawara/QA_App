@@ -21,6 +21,7 @@ import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -33,7 +34,9 @@ public class QuestionDetailActivity extends AppCompatActivity
     private ProgressDialog mProgress;
     private FloatingActionButton mFavoriteFab;
     private DatabaseReference mAnswerRef;
-    private int favoriteFlag =0;
+    private ArrayList<Favorite> mFavoriteArrayList;
+    private String mFavoriteID;
+    private int favoriteFlag = 0;
 
     private ChildEventListener mEventListener = new ChildEventListener() {
         @Override
@@ -131,6 +134,9 @@ public class QuestionDetailActivity extends AppCompatActivity
         mQuestion = (Question) extras.get("question");
         setTitle(mQuestion.getTitle());
 
+        mFavoriteArrayList = new ArrayList<Favorite>();
+        mFavoriteArrayList = (ArrayList<Favorite>) extras.get("favorites");
+
         mProgress = new ProgressDialog(this);
 
         mListView = (ListView) findViewById(R.id.listView);
@@ -144,23 +150,20 @@ public class QuestionDetailActivity extends AppCompatActivity
         mFavoriteFab = (FloatingActionButton) findViewById(R.id.favoriteFab);
         mFavoriteFab.setOnClickListener(this);
 
-        FirebaseUser user = FirebaseAuth.getInstance().getCurrentUser();
-//        if(user != null){
-//            String userId = user.getUid();
-//            for(String favoriteUser:mQuestion.()){
-//                if(userId.equals(favoriteUser)){
-//                    favoriteFlag = 1;
-//                }
-//            }
-//            if(favoriteFlag == 0){
-//                mFavoriteFab.setImageResource(R.drawable.ic_graystar);
-//            }else{
-//                mFavoriteFab.setImageResource(R.drawable.ic_yellowstar);
-////            }
-//
-//        }else{
-//            mFavoriteFab.hide();
-//        }
+
+        if(mFavoriteArrayList.size() > 0){
+            for(int i = 0 ;i<mFavoriteArrayList.size();i++){
+                if(mFavoriteArrayList.get(i).getmQuestionUid().equals(mQuestion.getQuestionUid())){
+                    favoriteFlag = 1;
+                    mFavoriteID = mFavoriteArrayList.get(i).getmfavoriteKey();
+                }
+            }
+        }
+        if(favoriteFlag == 0){
+            mFavoriteFab.setImageResource(R.drawable.ic_graystar);
+        }else {
+            mFavoriteFab.setImageResource(R.drawable.ic_yellowstar);
+        }
 
         DatabaseReference databaseReference = FirebaseDatabase.getInstance().getReference();
         mAnswerRef = databaseReference.child(Const.ContentsPATH).child(String.valueOf(mQuestion.getQuestionUid())).child(Const.AnswersPATH);
@@ -171,10 +174,14 @@ public class QuestionDetailActivity extends AppCompatActivity
     @Override
     public void onComplete(DatabaseError databaseError,DatabaseReference databaseReference){
         mProgress.dismiss();
+
+        Log.d("aaaaaaa",String.valueOf(databaseReference));
+
         if(databaseError == null){
             if(favoriteFlag == 0){
                 favoriteFlag = 1;
                 mFavoriteFab.setImageResource(R.drawable.ic_yellowstar);
+                mFavoriteID = databaseReference.getKey();
             }else{
                 favoriteFlag = 0;
                 mFavoriteFab.setImageResource(R.drawable.ic_graystar);
@@ -209,11 +216,11 @@ public class QuestionDetailActivity extends AppCompatActivity
             if(favoriteFlag == 0){
                 HashMap<String,String> data = new HashMap<String,String>();
                 data.put("favQuestionId",mQuestion.getQuestionUid());
+                data.put("genre",String.valueOf(mQuestion.getGenre()));
                 favRef.push().setValue(data,this);
                 mProgress.setMessage("登録しています");
             }else{
-
-                favRef.push().removeValue(this);
+                favRef.child(mFavoriteID).removeValue(this);
                 mProgress.setMessage("削除しています");
             }
 
